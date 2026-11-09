@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso | Sistema BI Biblioteca</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { 
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); 
+            height: 100vh; display: flex; justify-content: center; align-items: center; 
+        }
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px; border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            width: 100%; max-width: 380px;
+            animation: fadeIn 0.6s ease-out;
+        }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h2 { color: #1e293b; font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+        .header p { color: #64748b; font-size: 14px; }
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; font-size: 13px; color: #475569; margin-bottom: 6px; font-weight: 600; }
+        .input-group input {
+            width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px;
+            font-size: 14px; transition: all 0.3s;
+        }
+        .input-group input:focus { border-color: #0284c7; outline: none; box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1); }
+        .btn-submit {
+            width: 100%; padding: 12px; background: #0284c7; color: white;
+            border: none; border-radius: 8px; font-size: 15px; font-weight: 600;
+            cursor: pointer; transition: background 0.3s, transform 0.1s;
+        }
+        .btn-submit:hover { background: #0369a1; }
+        .btn-submit:active { transform: scale(0.98); }
+        .error-message {
+            color: #ef4444; background: #fef2f2; border: 1px solid #f87171;
+            padding: 10px; border-radius: 6px; font-size: 13px; margin-top: 15px;
+            text-align: center; display: none;
+        }
+        /* Animaciones */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            50% { transform: translateX(8px); }
+            75% { transform: translateX(-8px); }
+        }
+        .shake { animation: shake 0.4s; }
+        /* Estilos para el botón de ver contraseña */
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .password-wrapper input {
+            padding-right: 40px; /* Deja espacio para que el texto no pise el ojito */
+        }
+        .btn-eye {
+            position: absolute;
+            right: 10px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        .btn-eye:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container" id="loginBox">
+        <div class="header">
+            <h2>Tablero Directivo</h2>
+            <p>Ingrese sus credenciales para continuar</p>
+        </div>
+        <form id="loginForm">
+            <div class="input-group">
+                <label for="correo">Correo Electrónico</label>
+                <input type="email" id="correo" placeholder="ejemplo@biblioteca.com" required>
+            </div>  
+        <div class="input-group">
+                <label for="contrasena">Contraseña</label>
+                <div class="password-wrapper">
+                    <input type="password" id="contrasena" placeholder="••••••••" required>
+                    <button type="button" id="togglePassword" class="btn-eye" title="Mostrar/Ocultar contraseña">👁️</button>
+                </div>
+            </div>
+            <button type="submit" class="btn-submit" id="submitBtn">Ingresar al Tablero</button>
+            <div class="error-message" id="mensaje-error">Usuario o contraseña incorrectos.</div>
+        </form>
+    </div>
+
+<script>
+        // 1. Lógica para mostrar/ocultar contraseña
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('contrasena');
+
+        togglePassword.addEventListener('click', function () {
+            // Alterna entre el tipo "password" y "text"
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            // Cambia el emoji dependiendo del estado
+            this.textContent = type === 'password' ? '👁️' : '🙈';
+        });
+
+        // 2. Lógica para procesar el inicio de sesión
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const correo = document.getElementById('correo').value;
+            const contrasena = document.getElementById('contrasena').value;
+            const btn = document.getElementById('submitBtn');
+            const loginBox = document.getElementById('loginBox');
+            const mensajeError = document.getElementById('mensaje-error');
+
+            btn.textContent = 'Validando...';
+            btn.style.opacity = '0.7';
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ correo, contrasena })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    // Guardamos el rol y nombre para usarlo en el dashboard
+                    localStorage.setItem('usuarioLogueado', JSON.stringify(data.usuario));
+                    window.location.href = data.redirect;
+                } else {
+                    mostrarError();
+                }
+            } catch (error) {
+                mostrarError();
+            }
+
+            function mostrarError() {
+                btn.textContent = 'Ingresar al Tablero';
+                btn.style.opacity = '1';
+                mensajeError.style.display = 'block';
+                loginBox.classList.remove('shake');
+                void loginBox.offsetWidth; 
+                loginBox.classList.add('shake');
+            }
+        });
+    </script>
+</body>
+</html>

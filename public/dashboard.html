@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestión | Biblioteca</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: #f8fafc; display: flex; height: 100vh; overflow: hidden; }
+        
+        .sidebar { width: 260px; background: #0f172a; color: white; padding: 25px 20px; display: flex; flex-direction: column; z-index: 50; }
+        .sidebar h2 { font-size: 22px; margin-bottom: 35px; color: #38bdf8; }
+        .nav-item { padding: 12px 15px; color: #94a3b8; text-decoration: none; display: block; border-radius: 8px; margin-bottom: 8px; font-weight: 500; cursor: pointer; }
+        .nav-item:hover, .nav-item.active { background: #1e293b; color: #fff; }
+        .admin-only { display: none; } 
+        .logout-btn { margin-top: auto; color: #ef4444; }
+        
+        .main-content { flex: 1; padding: 30px 40px; overflow-y: auto; position: relative; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .user-badge { background: white; padding: 8px 16px; border-radius: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 15px;}
+        .role-tag { font-size: 11px; padding: 3px 8px; border-radius: 12px; background: #e2e8f0; text-transform: uppercase;}
+        
+        .btn-carrito { background: #0284c7; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 5px; transition: 0.2s;}
+        .btn-carrito:hover { background: #0369a1; transform: scale(1.05);}
+
+        .seccion { display: none; }
+        .seccion.activa { display: block; animation: fadeIn 0.4s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 14px; text-align: left; border-bottom: 1px solid #f1f5f9; }
+        
+        .hidden { display: none !important; }
+        .cursor-pointer { cursor: pointer; }
+        .cursor-pointer:hover { background-color: #f1f5f9; }
+        
+        .semaforo { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+        .verde { background-color: #10b981; box-shadow: 0 0 5px #10b981; } 
+        .amarillo { background-color: #f59e0b; box-shadow: 0 0 5px #f59e0b; } 
+        .rojo { background-color: #ef4444; box-shadow: 0 0 5px #ef4444; }
+
+        .search-bar { width: 100%; padding: 14px 20px; border: 1px solid #cbd5e1; border-radius: 10px; margin-bottom: 25px; font-size: 15px; }
+        .catalogo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 25px; }
+        .libro-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; transition: 0.3s; display: flex; flex-direction: column;}
+        .libro-card:hover { transform: translateY(-5px); box-shadow: 0 12px 20px rgba(0,0,0,0.08); }
+        .libro-portada { height: 160px; background: linear-gradient(135deg, #38bdf8, #3b82f6); display: flex; align-items: center; justify-content: center; color: white; font-size: 40px; font-weight: bold;}
+        .libro-info { padding: 20px; flex: 1; display: flex; flex-direction: column;}
+        .libro-titulo { font-weight: 700; font-size: 16px; margin-bottom: 4px; color: #0f172a;}
+        .libro-autor { color: #64748b; font-size: 13px; margin-bottom: 12px;}
+        .libro-precio { font-size: 18px; font-weight: 800; color: #10b981; margin-bottom: 15px;}
+        
+        .card-actions { display: flex; gap: 10px; margin-top: auto; }
+        .btn-accion { flex: 1; padding: 10px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 13px;}
+        .btn-prestar { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+        .btn-prestar:hover { background: #e2e8f0; }
+        .btn-comprar { background: #10b981; color: white; }
+        .btn-comprar:hover { background: #059669; }
+
+        .cart-panel { position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; background: white; box-shadow: -5px 0 25px rgba(0,0,0,0.1); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100; display: flex; flex-direction: column; }
+        .cart-panel.open { right: 0; }
+        .cart-header { padding: 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+        .close-cart { cursor: pointer; font-size: 24px; color: #64748b; background: none; border: none;}
+        .cart-items { flex: 1; overflow-y: auto; padding: 20px; }
+        .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 10px; }
+        .btn-remove { background: #fee2e2; color: #ef4444; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer;}
+        .cart-footer { padding: 20px; border-top: 1px solid #e2e8f0; background: #f8fafc;}
+        .cart-total { display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; margin-bottom: 15px; }
+        .btn-checkout { width: 100%; padding: 15px; background: #0f172a; color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 16px; cursor: pointer; }
+        .table-wrap { overflow-x:auto; }
+        .modal { position:fixed;inset:0;background:rgba(15,23,42,.65);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px; }
+        .modal-contenido { background:#fff;border-radius:14px;padding:28px;width:min(680px,100%);max-height:90vh;overflow-y:auto; }
+        #toast {position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:250;pointer-events:none;}
+        .toast-alert {background:#0f172a;color:white;padding:14px 22px;border-radius:10px;box-shadow:0 6px 30px #0003;}
+        .btn-accion:disabled {opacity:.45;cursor:not-allowed;}
+        .btn-detalle {background:#e0f2fe;color:#075985;}
+        .btn-detalle:hover {background:#bae6fd;}
+        @media(max-width:700px){.sidebar{width:72px;padding:18px 8px}.sidebar h2{font-size:13px}.nav-item{font-size:11px;padding:10px 4px}.main-content{padding:16px}.header{align-items:flex-start;gap:12px;flex-direction:column}.cart-panel{width:min(400px,100vw)}.catalogo-grid{grid-template-columns:1fr}}
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>📚 BiblioTech</h2>
+        <a class="nav-item admin-only" id="nav-bi" onclick="cambiarSeccion('bi')">📊 Tablero Directivo (BI)</a>
+        <a class="nav-item" id="nav-catalogo" onclick="cambiarSeccion('catalogo')">📖 Catálogo de Libros</a>
+        <a class="nav-item" id="nav-prestamos" onclick="cambiarSeccion('prestamos')">📅 Mis Préstamos</a>
+        <a class="nav-item admin-only" id="nav-usuarios" onclick="cambiarSeccion('usuarios')">👥 Gestión de Usuarios</a>
+        <a class="nav-item logout-btn" onclick="cerrarSesion()">🚪 Cerrar Sesión</a>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1 id="titulo-seccion">Cargando...</h1>
+            <div class="user-badge">
+                <button class="btn-carrito" onclick="toggleCarrito()">
+                    🛒 <span id="cart-count">0</span>
+                </button>
+                <div style="height: 25px; width: 1px; background: #cbd5e1; margin: 0 5px;"></div>
+                <span id="userName">Usuario</span>
+                <span class="role-tag" id="userRole">Rol</span>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 1: BI -->
+        <div id="seccion-bi" class="seccion">
+            <div id="migas-pan" style="font-size: 14px; color: #64748b; margin-bottom: 20px;">
+                <span onclick="mostrarNivel(1)" style="cursor: pointer; color: #0284c7; font-weight: 600;">Corporativo (Todas las Sucursales)</span>
+            </div>
+
+            <div id="nivel-1" class="card">
+                <h3 style="margin-bottom: 10px;">Rendimiento Operativo por Sucursal</h3>
+                <p style="color: #64748b; font-size: 14px; margin-bottom: 15px;">Haga clic en una barra para hacer Drill-Down a la sucursal.</p>
+                <div style="height: 300px; width: 100%; cursor: pointer;"><canvas id="graficoBI"></canvas></div>
+            </div>
+
+            <div id="nivel-2" class="card hidden">
+                <h3 id="titulo-nivel-2">Libros de la sucursal</h3>
+                <p style="color:#64748b;margin:12px 0">Seleccioná un libro para consultar sus operaciones.</p>
+                <div class="table-wrap"><table><thead><tr><th>Libro</th><th>Operaciones totales</th><th>Stock</th></tr></thead><tbody id="tabla-bi-libros"></tbody></table></div>
+            </div>
+            <div id="nivel-3" class="card hidden">
+                <h3 id="titulo-nivel-3">Historial de operaciones</h3>
+                <p style="color:#64748b;margin:12px 0">Seleccioná una operación para consultar el cuarto nivel.</p>
+                <div class="table-wrap"><table><thead><tr><th>ID</th><th>Fecha</th><th>Tipo</th><th>Usuario</th><th>Monto</th><th>Estado</th></tr></thead><tbody id="tabla-bi-operaciones"></tbody></table></div>
+            </div>
+            <div id="nivel-4" class="card hidden">
+                <h3>Detalle de la operación · Nivel 4</h3>
+                <div id="detalle-operacion" style="margin-top:15px"></div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 2: Catálogo -->
+        <div id="seccion-catalogo" class="seccion">
+            <input type="text" id="buscador" class="search-bar" placeholder="🔍 Buscar por título o autor..." onkeyup="filtrarCatalogo()">
+            <div class="catalogo-grid" id="grid-libros"></div>
+        </div>
+
+        <!-- SECCIÓN 3: Mis préstamos -->
+        <div id="seccion-prestamos" class="seccion">
+            <div class="card">
+                <h3 id="prestamos-titulo">Historial de mis préstamos</h3>
+                <p style="color:#64748b;margin:12px 0">Los préstamos duran 14 días. Podés registrar una devolución desde aquí.</p>
+                <div class="table-wrap"><table><thead><tr><th>Libro</th><th>Sucursal</th><th>Fecha</th><th>Vencimiento</th><th>Devolución</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="tabla-prestamos"></tbody></table></div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 4: Usuarios -->
+        <div id="seccion-usuarios" class="seccion admin-only">
+            <div class="card">
+                <h3>Usuarios Registrados (BD Real)</h3>
+                <table style="margin-top: 15px;">
+                    <thead><tr><th>ID</th><th>Correo Electrónico</th><th>Rol</th><th>Préstamos</th></tr></thead>
+                    <tbody id="tabla-usuarios-bd"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel del Carrito -->
+    <div class="cart-panel" id="cartPanel">
+        <div class="cart-header">
+            <h3>Tu Selección</h3>
+            <button class="close-cart" onclick="toggleCarrito()">×</button>
+        </div>
+        <div class="cart-items" id="cartItems">
+            <p style="color: #94a3b8; text-align: center; margin-top: 50px;">El carrito está vacío</p>
+        </div>
+        <div class="cart-footer">
+            <label for="cartSucursal" style="display:block;margin-bottom:8px;font-weight:600">Sucursal para retirar / comprar</label>
+            <select id="cartSucursal" class="search-bar" style="margin-bottom:14px" onchange="actualizarCarritoUI()"></select>
+            <div class="cart-total">
+                <span>Total a Pagar:</span>
+                <span id="cartTotal">$ 0,00</span>
+            </div>
+            <button class="btn-checkout" onclick="procesarCheckout()">Confirmar Operación</button>
+        </div>
+    </div>
+
+    <div id="modal-libro" class="modal hidden" role="dialog" aria-modal="true" aria-label="Detalle del libro">
+        <div class="modal-contenido"><button class="close-cart" style="float:right" onclick="cerrarFicha()" aria-label="Cerrar">×</button>
+        <div id="contenido-ficha"></div></div>
+    </div>
+    <div id="toast" aria-live="polite"></div>
+    <script src="/app.js" defer></script>
+</body>
+</html>
